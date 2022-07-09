@@ -1,6 +1,6 @@
 {
     "name": "js-play-evolutions",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Play Evolutions in Javascript",
     "main": "build/main/index.js",
     "typings": "build/main/index.d.ts",
@@ -9,29 +9,52 @@
     "license": "MIT",
     "keywords": [],
     "scripts": {
+        "build": "run-p build:*",
+        "build:main": "tsc -p tsconfig.json",
+        "build:module": "tsc -p tsconfig.module.json",
+        "test:golden": "jest --config ./test/jest-golden.json"
     },
     "engines": {
-      "node": ">=10"
+        "node": ">=10"
     },
     "dependencies": {
-      "@prisma/client": "^4.0.0",
-      "lodash": "^4.17.21",
-      "prisma": "^4.0.0"
+        "@oclif/command": "^1",
+        "@oclif/config": "^1",
+        "@oclif/plugin-help": "^3",
+        "@prisma/client": "^3.12.0",
+        "lodash": "^4.17.21",
+        "prisma": "^3.12.0"
     },
     "devDependencies": {
-      "typescript": "^4.0.2"
+        "@oclif/dev-cli": "^1",
+        "@oclif/test": "^1",
+        "@types/jest": "27.4.1",
+        "@types/lodash": "^4.14.179",
+        "jest": "^27.2.5",
+        "npm-run-all": "^4.1.5",
+        "testcontainers": "^8.11.0",
+        "ts-jest": "^27.0.3",
+        "ts-loader": "^9.2.3",
+        "ts-node": "^10.0.0",
+        "typescript": "^4.0.2"
     },
     "files": [
-      "build/main",
-      "build/module",
-      "!**/*.spec.*",
-      "!**/*.json",
-      "CHANGELOG.md",
-      "LICENSE",
-      "README.md"
+        "build/main",
+        "build/module",
+        "!**/*.spec.*",
+        "!**/*.json",
+        "CHANGELOG.md",
+        "LICENSE",
+        "README.md"
     ],
+    "oclif": {
+        "commands": "./dist/src/commands",
+        "bin": "evolutions",
+        "plugins": [
+            "@oclif/plugin-help"
+        ]
+    },
     "prettier": {
-      "singleQuote": true
+        "singleQuote": true
     }
-  }
-  
+}

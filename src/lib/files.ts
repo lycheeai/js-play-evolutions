@@ -1,8 +1,8 @@
-import { readFileSync, readdirSync } from 'fs';
-import crypto from 'crypto';
-import _ from 'lodash';
+import { existsSync, readFileSync, readdirSync } from 'fs';
+import * as crypto from 'crypto';
+import * as _ from 'lodash';
 
-type FileEvolution = {
+export type FileEvolution = {
     revision: number;
     ups: string;
     downs: string;
@@ -31,10 +31,10 @@ function getUpDowns(filePath: string): UpDowns {
 
     const fileLines = fileString.split("\n").map((line) => (line.trim()))
 
-    const initialUps = [];
-    const initialDowns = [];    
+    const initialUps: string[] = [];
+    const initialDowns: string[] = [];    
 
-    var currentState = null;
+    var currentState: string | null = null;
 
     fileLines.forEach(function(line) {
         if (!currentState && UP_REGEX.test(line)) {
@@ -71,16 +71,22 @@ function getUpDowns(filePath: string): UpDowns {
     };
 }
 
-function readSQLFile(root: string, filename: string): FileEvolution {
-    const { ups, downs, upStatements, downStatements } = getUpDowns(`${process.cwd()}/${root}/${filename}`)
-
-    // error catching
-    const revision = parseInt(filename.match(/([0-9]+)\.sql/)[1]);
-    
+function makeHash(ups: string, downs: string) {
     const shasum = crypto.createHash('sha1')        
     shasum.update(downs.trim() + ups.trim())
     const hash = shasum.digest('hex');
 
+    return hash;
+}
+
+export function readSQLFile(root: string, filename: string): FileEvolution {
+    const { ups, downs, upStatements, downStatements } = getUpDowns(`${process.cwd()}/${root}/${filename}`)
+
+    // error catching
+    const matches = filename.match(/([0-9]+)\.sql/);
+    const revision = parseInt(matches ? matches[1] : '');
+    
+    const hash = makeHash(ups, downs);
 
     return {
         revision,
@@ -104,4 +110,48 @@ export function getEvolutionsForRoot(root: string): FileEvolution[] {
         const evolution = readSQLFile(root, filename)
         return evolution;
     }), (f) => (f.revision));
+}
+
+export function calculateSchemaTable(files: string, schema: string| undefined, table: string | undefined) {
+    const lastName = files.split('/').slice(-1)[0];
+    const defaultedTable = table || `${lastName}_evolutions`;
+    const defaultedSchema = schema || 'public';
+
+    return {
+        defaultedSchema,
+        defaultedTable
+    };
+}
+
+
+function getHasuraEvolutionFromDir(fullPath: string, folder: string): FileEvolution {
+    const upsFile = `${fullPath}/up.sql`;
+    const ups = existsSync(upsFile) ? readFileSync(upsFile).toString('utf8') : '';
+
+    const downsFile = `${fullPath}/down.sql`;
+    const downs = existsSync(downsFile) ? readFileSync(downsFile).toString('utf8') : '';
+
+    const upStatements = ups.split(/(?<!;);(?!;)/).map((l) => (l.trim().replace(/;;/g, ";"))).filter((l) => (l.length > 0));
+    const downStatements = downs.split(/(?<!;);(?!;)/).map((l) => (l.trim().replace(/;;/g, ";"))).filter((l) => (l.length > 0))
+
+    const hash = makeHash(ups, downs);
+
+    const revision = parseInt(folder.split('_')[0]);
+
+    return {
+        revision,
+        ups,
+        downs,
+        hash,
+        upStatements,
+        downStatements
+    }    
+}
+
+export function getHasuraEvolutionsForRoot(root: string): FileEvolution[] {
+    const folder = readdirSync(`${process.cwd()}/${root}`)
+
+    return folder.map((folder) => {
+        return getHasuraEvolutionFromDir(`${process.cwd()}/${root}/${folder}`, folder)
+    });
 }
