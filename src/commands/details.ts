@@ -3,7 +3,7 @@ import { calculateSchemaTable, readSQLFile } from '../lib/files'
 import { EvolutionsClient  } from '../lib/run'
 import * as _ from 'lodash'
 
-export default class Run extends Command {
+export default class Details extends Command {
   static description = 'describe the command here'
 
   static examples = [
@@ -12,28 +12,44 @@ export default class Run extends Command {
 
   static flags = {
     help: flags.help({char: 'h'}),
-    // flag with a value (-n, --name=VALUE)
     schema: flags.string({char: 's', description: 'schema for evolutions table. default public.', default: 'public'}),
     table: flags.string({char: 't', description: 'evolutions table name. defaults to file folder.'}),
-    // flag with no value (-f, --force)
-    files: flags.string({char: 'f', description: 'evolutions files', required: true}),
-    id: flags.integer({char: 'i', required: true})
   }
 
-  static args = [{name: 'file'}]
+  static args = [
+    {
+      name: 'files',
+      required: true,
+      description: 'evolutions files',
+    },
+    {
+      name: 'db',
+      required: true,
+      description: 'database connection string',
+    },
+    {
+      name: 'id',
+      required: true,
+      description: 'get details for this id',
+      parse: (i: string) => parseInt(i)
+    }    
+  ]
 
   async run() {
-    const { flags} = this.parse(Run);
-    const { defaultedSchema, defaultedTable } = calculateSchemaTable(flags.files, flags.schema, flags.table);
+    const { flags, args } = this.parse(Details);
+    // From my understanding this is the best way to pass this in
+    process.env.DATABASE_URL = args.db;
+
+    const { defaultedSchema, defaultedTable } = calculateSchemaTable(args.files, flags.schema, flags.table);
 
     const client = new EvolutionsClient()
     try {
-        this.log(`Running evolutions on ${defaultedSchema}.${defaultedTable} using ${flags.files}`);
-        const evos = await client.getTable(`${defaultedSchema}.${defaultedTable}`);
+        this.log(`Running evolutions on ${defaultedSchema}.${defaultedTable} using ${args.files}`);
+        const evos = await client.getTable(defaultedSchema, defaultedTable);
 
-        const evo = _.find(evos, (e) => (e.id === flags.id))
+        const evo = _.find(evos, (e) => (e.id === args.id))
 
-        const local = readSQLFile(flags.files, `${flags.id}.sql`)
+        const local = readSQLFile(args.files, `${args.id}.sql`)
 
         if (!evo) {
             console.warn('Evolution not found')
@@ -49,11 +65,5 @@ export default class Run extends Command {
     } finally {
         client.close();
     }
-
-    // const name = flags.name ?? 'world'
-    // this.log(`hello ${name} from ./src/commands/hello.ts`)
-    // if (args.file && flags.force) {
-    //   this.log(`you input --force and --file: ${args.file}`)
-    // }
   }
 }

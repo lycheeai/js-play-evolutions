@@ -23,10 +23,10 @@ export class EvolutionsClient {
         this.prisma = new PrismaClient();
     }
 
-    async getTable(table: string) {
-        console.warn(table);
+    async getTable(schema: string, metaTable: string) {
+        await assertEvolutionsTable(this.prisma, schema, metaTable);
         return this.prisma.$queryRaw<EvolutionsMeta[]>(Prisma.sql`
-            SELECT * FROM ${Prisma.raw(table)} ORDER BY id
+            SELECT * FROM ${Prisma.raw(`${schema}.${metaTable}`)} ORDER BY id
         `);
     }
 

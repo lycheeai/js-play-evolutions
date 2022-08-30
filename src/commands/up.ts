@@ -2,11 +2,11 @@ import {Command, flags} from '@oclif/command'
 import { calculateSchemaTable } from '../lib/files'
 import { EvolutionsClient  } from '../lib/run'
 
-export default class List extends Command {
+export default class Up extends Command {
   static description = 'describe the command here'
 
   static examples = [
-    `$ evolutions list my_app ./evolutions/my_app`,
+    `$ evolutions up ./evolutions/my_app postgresql://root:root@localhost:5433/evolutions_test`,
   ]
 
   static flags = {
@@ -29,7 +29,7 @@ export default class List extends Command {
   ]
 
   async run() {
-    const { flags, args } = this.parse(List);
+    const { flags, args } = this.parse(Up);
     // From my understanding this is the best way to pass this in
     process.env.DATABASE_URL = args.db;
 
@@ -38,27 +38,10 @@ export default class List extends Command {
     const client = new EvolutionsClient()
     try {
         this.log(`Running evolutions on ${defaultedSchema}.${defaultedTable} using ${args.files}`);
-        const evos = await client.getTable(defaultedSchema, defaultedTable);
-
-        const fixedEvos = evos.map((item) => ({
-           ...item,
-           apply_script: item.apply_script?.slice(0, 100) + '...',
-           revert_script: item.revert_script?.slice(0, 100) + '...',
-        }))
-
-        if(fixedEvos.length) {
-          console.table(fixedEvos);
-        } else {
-          console.warn('No evolutions have been run')
-        }
+        await client.runEvolutionsUp(defaultedSchema, defaultedTable, args.files)
+        this.log('Successfully ran evolutions');
     } finally {
         client.close();
     }
-
-    // const name = flags.name ?? 'world'
-    // this.log(`hello ${name} from ./src/commands/hello.ts`)
-    // if (args.file && flags.force) {
-    //   this.log(`you input --force and --file: ${args.file}`)
-    // }
   }
 }

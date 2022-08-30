@@ -2,17 +2,21 @@ import {Command, flags} from '@oclif/command'
 import { calculateSchemaTable } from '../lib/files'
 import { EvolutionsClient  } from '../lib/run'
 
-export default class List extends Command {
+export default class Up extends Command {
   static description = 'describe the command here'
 
   static examples = [
-    `$ evolutions list my_app ./evolutions/my_app`,
+    `$ evolutions up ./evolutions/my_app postgresql://root:root@localhost:5433/evolutions_test`,
   ]
 
   static flags = {
     help: flags.help({char: 'h'}),
+    // flag with a value (-n, --name=VALUE)
+    // db: flags.string({char: 'd', description: 'database connection string', required: true}),
     schema: flags.string({char: 's', description: 'schema for evolutions table. default public.', default: 'public'}),
     table: flags.string({char: 't', description: 'evolutions table name. defaults to file folder.'}),
+    // flag with no value (-f, --force)
+    // files: flags.string({char: 'f', description: 'evolutions files', required: true}),
   }
 
   static args = [
@@ -25,11 +29,17 @@ export default class List extends Command {
       name: 'db',
       required: true,
       description: 'database connection string',
+    },
+    {
+      name: 'id',
+      required: true,
+      description: 'revert to this id',
+      parse: (i: string) => parseInt(i)
     }
   ]
 
   async run() {
-    const { flags, args } = this.parse(List);
+    const { flags, args } = this.parse(Up);
     // From my understanding this is the best way to pass this in
     process.env.DATABASE_URL = args.db;
 
@@ -38,27 +48,10 @@ export default class List extends Command {
     const client = new EvolutionsClient()
     try {
         this.log(`Running evolutions on ${defaultedSchema}.${defaultedTable} using ${args.files}`);
-        const evos = await client.getTable(defaultedSchema, defaultedTable);
-
-        const fixedEvos = evos.map((item) => ({
-           ...item,
-           apply_script: item.apply_script?.slice(0, 100) + '...',
-           revert_script: item.revert_script?.slice(0, 100) + '...',
-        }))
-
-        if(fixedEvos.length) {
-          console.table(fixedEvos);
-        } else {
-          console.warn('No evolutions have been run')
-        }
+        await client.runEvolutionsDown(defaultedSchema, defaultedTable, args.id)
+        this.log('Successfully ran evolutions');
     } finally {
         client.close();
     }
-
-    // const name = flags.name ?? 'world'
-    // this.log(`hello ${name} from ./src/commands/hello.ts`)
-    // if (args.file && flags.force) {
-    //   this.log(`you input --force and --file: ${args.file}`)
-    // }
   }
 }

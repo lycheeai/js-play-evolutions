@@ -48,7 +48,7 @@
         "README.md"
     ],
     "oclif": {
-        "commands": "./dist/src/commands",
+        "commands": "./build/main/commands",
         "bin": "evolutions",
         "plugins": [
             "@oclif/plugin-help"
